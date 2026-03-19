@@ -22,7 +22,7 @@ var rootCmd = &cobra.Command{
 		if toggle {
 			fmt.Println("toggle")
 		}
-		fmt.Printf("Hello World\n")
+		fmt.Print(appLogo)
 	},
 }
 

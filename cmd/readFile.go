@@ -17,19 +17,28 @@ var readFileCmd = &cobra.Command{
 	Long: `Read the target file and print all contents to stdout.
 
 Example:
-  MOCLI readFile test.txt
-  MOCLI readFile ./data/example.md`,
+  MOCLI readFile test.txt`,
+
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
-		content, err := os.ReadFile(filePath)
+		content, err := readFileContent(filePath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to read file %q: %v\n", filePath, err)
 			os.Exit(1)
 		}
 
-		fmt.Print(string(content))
+		fmt.Print(content)
 	},
+}
+
+func readFileContent(filePath string) (string, error) {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	return string(content), nil
 }
 
 func init() {
