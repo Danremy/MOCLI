@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"MOCLI/tui"
 	"fmt"
 	"os"
 
@@ -12,17 +13,13 @@ import (
 
 // rootCmd 表示基础命令（当没有任何子命令时调用）
 var rootCmd = &cobra.Command{
-	Use:   "MOCLI",
+	Use:   "mocli",
 	Short: "design for ",
 	Long:  `MOCLI is Commendline which can used for `,
 
 	// 如果你的根命令需要执行逻辑，可以在这里定义运行函数
 	Run: func(cmd *cobra.Command, args []string) {
-		toggle, _ := cmd.Flags().GetBool("toggle")
-		if toggle {
-			fmt.Println("toggle")
-		}
-		fmt.Print(appLogo)
+		tui.Run()
 	},
 }
 
@@ -32,6 +29,7 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
@@ -46,6 +44,6 @@ func init() {
 
 	// Cobra 也支持本地参数（Local Flags），
 	// 这些参数只在当前命令被直接调用时生效
-
-	rootCmd.Flags().BoolP("toggle", "t", false, "toggle 参数的帮助信息")
+	rootCmd.AddCommand(readFileCmd)
+	rootCmd.AddCommand(tuiCmd)
 }
