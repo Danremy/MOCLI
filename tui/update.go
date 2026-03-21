@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"MOCLI/internal"
+	"MOCLI/internal/fileio"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -49,7 +49,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 
-				content, err := internal.ReadFileContent(path)
+				content, err := fileio.ReadFileContent(path)
 				if err != nil {
 					m.errorMsg = fmt.Sprintf("读取文件失败: %v", err)
 					m.result = ""
