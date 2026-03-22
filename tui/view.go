@@ -34,6 +34,17 @@ func (m Model) View() string {
 		return "\n下次见！\n"
 	}
 
+	if m.screen == "result" {
+		view := "\n" + titleStyle.Render("Read File Result") + "\n\n"
+		if m.errorMsg != "" {
+			view += errorStyle.Render(m.resultView.View()) + "\n"
+		} else {
+			view += m.resultView.View() + "\n"
+		}
+		view += "\n" + hintStyle.Render("j/k 或方向键滚动 · pgup/pgdown 翻页 · g/G 到顶部/底部 · esc 返回菜单 · q 退出") + "\n"
+		return view
+	}
+
 	view := "\n" + renderColorLogo(m.hueShift) + "\n"
 	view += titleStyle.Render("MOCLI--Made By MochiZen") + "\n\n"
 

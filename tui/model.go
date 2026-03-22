@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -16,6 +17,7 @@ type Model struct {
 	textInput textinput.Model
 	result    string
 	errorMsg  string
+	resultView viewport.Model
 	hueShift  float64
 	quitting  bool
 }
@@ -28,13 +30,17 @@ func InitialModel() Model {
 	input.Width = 60
 	input.Blur()
 
+	vp := viewport.New(80, 20)
+	vp.SetContent("")
+
 	return Model{
 		choices: []string{
 			"Read File (readFile)",
 			"Exit",
 		},
-		screen:    "menu",
-		textInput: input,
+		screen:     "menu",
+		textInput:  input,
+		resultView: vp,
 	}
 }
 
