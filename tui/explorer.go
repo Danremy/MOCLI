@@ -19,14 +19,15 @@ type fileEntry struct {
 }
 
 type explorerModel struct {
-	cwd         string
-	table       table.Model
-	entries     []fileEntry
-	errMsg      string
-	inPreview   bool
-	previewPath string
-	previewText string
-	quitting    bool
+	cwd          string
+	table        table.Model
+	entries      []fileEntry
+	errMsg       string
+	inPreview    bool
+	previewPath  string
+	previewText  string
+	selectedPath string
+	quitting     bool
 }
 
 func newExplorerModel(startPath string) explorerModel {
@@ -192,7 +193,26 @@ func (m explorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.goParent()
 			return m, nil
-		case "enter", "l":
+		case "enter":
+			if m.inPreview {
+				m.selectedPath = m.previewPath
+				return m, tea.Quit
+			}
+
+			entry, ok := m.selectedEntry()
+			if !ok {
+				return m, nil
+			}
+
+			if entry.isDir {
+				m.cwd = entry.path
+				m.reloadEntries()
+				return m, nil
+			}
+
+			m.selectedPath = entry.path
+			return m, tea.Quit
+		case "l", "p":
 			if m.inPreview {
 				return m, nil
 			}
@@ -227,12 +247,22 @@ func (m explorerModel) View() string {
 	if m.errMsg != "" {
 		view += "\n" + m.errMsg + "\n"
 	}
-	view += "\nj/k 或方向键移动 · enter/l 进入/预览 · backspace/h 返回上级 · q 退出\n"
+	view += "\nj/k 或方向键移动 · enter 选择文件/进入目录 · l 或 p 预览文件 · backspace/h 返回上级 · q 退出\n"
 	return view
 }
 
-func RunFileExplorer(startPath string) error {
-	program := tea.NewProgram(newExplorerModel(startPath))
-	_, err := program.Run()
-	return err
+func RunFileExplorer(startPath string) (string, error) {
+	// Run in alternate screen to avoid leaving TUI help lines in the main terminal.
+	program := tea.NewProgram(newExplorerModel(startPath), tea.WithAltScreen())
+	finalModel, err := program.Run()
+	if err != nil {
+		return "", err
+	}
+
+	explorer, ok := finalModel.(explorerModel)
+	if !ok {
+		return "", fmt.Errorf("unexpected explorer model type: %T", finalModel)
+	}
+
+	return explorer.selectedPath, nil
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -44,10 +45,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.resultView.Width = contentWidth
 		m.resultView.Height = contentHeight
-		m.textInput.Width = contentWidth
+		pickerHeight := msg.Height - 12
+		if pickerHeight < 8 {
+			pickerHeight = 8
+		}
+		m.filePicker.SetHeight(pickerHeight)
+		if m.screen == "picker" {
+			var cmd tea.Cmd
+			m.filePicker, cmd = m.filePicker.Update(msg)
+			return m, cmd
+		}
 		return m, nil
 	case tea.KeyMsg:
-		if m.screen == "input" {
+		if m.screen == "picker" {
 			switch msg.String() {
 			case "ctrl+c", "q":
 				m.quitting = true
@@ -58,45 +68,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.result = ""
 				m.resultView.SetContent("")
 				return m, gradientTick()
-			case "enter":
-				path := strings.TrimSpace(m.textInput.Value())
-				if path == "" {
-					m.errorMsg = "请输入文件路径，例如 test.txt"
-					m.result = ""
-					m.resultView.SetContent(m.errorMsg)
-					m.screen = "result"
-					return m, nil
-				}
-
-				content, err := fileio.ReadFileContent(path)
-				if err != nil {
-					m.errorMsg = fmt.Sprintf("读取文件失败: %v", err)
-					m.result = ""
-					m.resultView.SetContent(m.errorMsg)
-				} else {
-					displayContent := strings.ReplaceAll(content, "\r\n", "\n")
-					displayContent = strings.ReplaceAll(displayContent, "\r", "\n")
-					if strings.TrimSpace(content) == "" {
-						displayContent = "（文件为空）"
-					}
-					m.errorMsg = ""
-					m.result = fmt.Sprintf(
-						"文件路径: %s\n内容长度: %d bytes\n\n--- 文件内容开始 ---\n%s\n--- 文件内容结束 ---",
-						path,
-						len(content),
-						displayContent,
-					)
-					m.resultView.SetContent(m.result)
-					m.resultView.GotoTop()
-				}
-				m.screen = "result"
 			default:
 				var cmd tea.Cmd
-				m.textInput, cmd = m.textInput.Update(msg)
+				m.filePicker, cmd = m.filePicker.Update(msg)
+
+				if ok, path := m.filePicker.DidSelectFile(msg); ok {
+					m.readSelectedFile(path)
+					m.screen = "result"
+					return m, cmd
+				}
+
+				if ok, path := m.filePicker.DidSelectDisabledFile(msg); ok {
+					m.errorMsg = fmt.Sprintf("该文件类型暂不可读: %s", path)
+				}
+
 				return m, cmd
 			}
-
-			return m, nil
 		}
 
 		switch msg.String() {
@@ -143,14 +130,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			switch m.cursor {
 			case 0:
-				m.textInput.SetValue("")
-				m.textInput.Focus()
-				m.screen = "input"
+				m.errorMsg = ""
+				if cwd, err := os.Getwd(); err == nil {
+					m.filePicker.CurrentDirectory = cwd
+				}
+				m.screen = "picker"
+				return m, m.filePicker.Init()
 			case 1:
 				m.quitting = true
 				return m, tea.Quit
 			}
-		case "pgup", "pgdown", "u", "d", "g", "G":
+		case "pgup", "pgdown", "u", "d":
 			if m.screen == "result" {
 				var cmd tea.Cmd
 				m.resultView, cmd = m.resultView.Update(msg)
@@ -165,11 +155,58 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	if m.screen == "picker" {
+		// Forward non-key messages (like filepicker readDirMsg) so file list can load.
+		var cmd tea.Cmd
+		m.filePicker, cmd = m.filePicker.Update(msg)
+		return m, cmd
+	}
+
 	return m, nil
 }
 
+func (m *Model) readSelectedFile(path string) {
+	cleanPath := strings.TrimSpace(path)
+	if cleanPath == "" {
+		m.errorMsg = "请选择一个文件"
+		m.result = ""
+		m.resultView.SetContent(m.errorMsg)
+		return
+	}
+
+	absolutePath, err := filepath.Abs(cleanPath)
+	if err != nil {
+		absolutePath = cleanPath
+	}
+
+	content, err := fileio.ReadFileContent(absolutePath)
+	if err != nil {
+		m.errorMsg = fmt.Sprintf("读取文件失败: %v", err)
+		m.result = ""
+		m.resultView.SetContent(m.errorMsg)
+		return
+	}
+
+	displayContent := strings.ReplaceAll(content, "\r\n", "\n")
+	displayContent = strings.ReplaceAll(displayContent, "\r", "\n")
+	if strings.TrimSpace(content) == "" {
+		displayContent = "（文件为空）"
+	}
+
+	m.errorMsg = ""
+	m.result = fmt.Sprintf(
+		"文件路径: %s\n内容长度: %d bytes\n\n--- 文件内容开始 ---\n%s\n--- 文件内容结束 ---",
+		absolutePath,
+		len(content),
+		displayContent,
+	)
+	m.resultView.SetContent(m.result)
+	m.resultView.GotoTop()
+}
+
 func Run() {
-	program := tea.NewProgram(InitialModel())
+	// Use alternate screen for a clean terminal after quitting the TUI.
+	program := tea.NewProgram(InitialModel(), tea.WithAltScreen())
 	if _, err := program.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "运行 TUI 失败: %v\n", err)
 		os.Exit(1)

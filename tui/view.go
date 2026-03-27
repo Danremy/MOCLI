@@ -24,6 +24,7 @@ var (
 )
 
 func (m Model) View() string {
+	// 定义一些样式
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
 	cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
 	hintStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
@@ -31,7 +32,7 @@ func (m Model) View() string {
 	errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
 
 	if m.quitting {
-		return "\n下次见！\n"
+		return "\nSee You Next Time！\n"
 	}
 
 	if m.screen == "result" {
@@ -41,7 +42,7 @@ func (m Model) View() string {
 		} else {
 			view += m.resultView.View() + "\n"
 		}
-		view += "\n" + hintStyle.Render("j/k 或方向键滚动 · pgup/pgdown 翻页 · g/G 到顶部/底部 · esc 返回菜单 · q 退出") + "\n"
+		view += "\n" + hintStyle.Render("j/k 或方向键滚动 · pgup/pgdown 翻页 · esc 返回菜单 · q 退出") + "\n"
 		return view
 	}
 
@@ -60,10 +61,13 @@ func (m Model) View() string {
 		return view
 	}
 
-	if m.screen == "input" {
-		view += successStyle.Render("请输入要读取的文件路径") + "\n\n"
-		view += m.textInput.View() + "\n\n"
-		view += hintStyle.Render("直接输入路径 · backspace 删除 · enter 读取 · esc 返回") + "\n"
+	if m.screen == "picker" {
+		view += successStyle.Render("请选择要读取的文件") + "\n\n"
+		view += m.filePicker.View() + "\n"
+		if m.errorMsg != "" {
+			view += "\n" + errorStyle.Render(m.errorMsg) + "\n"
+		}
+		view += "\n" + hintStyle.Render("方向键移动 · enter 选择文件 · esc 返回菜单 · q 退出") + "\n"
 		return view
 	}
 

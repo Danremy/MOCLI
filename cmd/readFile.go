@@ -12,7 +12,7 @@ import (
 )
 
 var readFileCmd = &cobra.Command{
-	Use:   "rf <filePath>",
+	Use:   "rf <filePath> or rf -g [startPath]",
 	Short: "Read a file and print its contents",
 	Long: `Read the target file and print all contents to stdout.
 
@@ -40,9 +40,21 @@ Example:
 				startPath = args[0]
 			}
 
-			if err := tui.RunFileExplorer(startPath); err != nil {
+			selectedPath, err := tui.RunFileExplorer(startPath)
+			if err != nil {
 				return fmt.Errorf("failed to open file explorer: %w", err)
 			}
+
+			if selectedPath == "" {
+				return nil
+			}
+
+			content, err := fileio.ReadFileContent(selectedPath)
+			if err != nil {
+				return fmt.Errorf("failed to read file %q: %w", selectedPath, err)
+			}
+
+			fmt.Fprint(cmd.OutOrStdout(), content)
 			return nil
 		}
 
